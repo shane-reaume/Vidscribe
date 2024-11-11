@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="css/bootstrap.css" rel="stylesheet">
+  <link href="css/thumbnail-gallery.css" rel="stylesheet">
+</head>
+<body>
+<div id="spacer"></div>
+<div id="floating-container" class="container-fluid">
+<div id="floating-hero">
+  <div class="container">
+    <div id="navtainer">
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="#">Shane's Video Search Engine</a>
+      </div>
+      <div id="navbar" class="collapse navbar-collapse">
+            <ul class="nav navbar-nav">
+              <li class="active"><a href="/public/">Process</a></li>
+              <li><a href="/public/search">Search</a></li>
+            </ul>
+      </div><!--/.nav-collapse -->
+    </div>
+  </div>
+  <div class="row video-hero">
+    <div class="video-one col-xs-4">
+      <video id="my-video-1" class="video-js"></video>
+      <h4 class="center-group" id="video-title-1"></h4>
+    </div>
+    <div class="video-two col-xs-4">
+      <video id="my-video-2" class="video-js"></video>
+      <h4 class="center-group" id="video-title-2"></h4>
+    </div>
+    <div class="video-three col-xs-4">
+      <video id="my-video-3" class="video-js"></video>
+      <h4 class="center-group" id="video-title-3"></h4>
+    </div>
+  </div>
+</div>
+</div>
+<div class="container-fluid">
+  <div id="analysis" class="tab-pane">
+        <div class="row image-list">
+          <div class="col-xs-4 group-1">
+            <span class="not-loading"></span>
+            <button class="btn-primary btn-sm center-group" onclick="postProcessVideo(1, VIDEO1)"><span class="glyphicon glyphicon-retweet"></span> Process Video</button>
+          </div>
+          <div class="col-xs-4 group-2">
+            <span class="not-loading"></span>
+            <button class="btn-primary btn-sm center-group" onclick="postProcessVideo(2, VIDEO2)"><span class="glyphicon glyphicon-retweet"></span> Process Video</button>
+          </div>
+          <div class="col-xs-4 group-3">
+            <span class="not-loading"></span>
+            <button class="btn-primary btn-sm center-group" onclick="postProcessVideo(3, VIDEO3)"><span class="glyphicon glyphicon-retweet"></span> Process Video</button>
+          </div>
+        </div>
+        <div class="col-xs-12 tab-back">
+          <h3>speech to text progress... </h3>
+          <div class='col-xs-12 term'>
+            <div class="col-xs-10" id="serverDataSpeech"></div>
+          </div>
+        </div>
+      </div>
+  <span id="serverDataSpeechPlaceholder"></span>
+</div>
+<script src="js/jquery.js"></script>
+<script src="js/bootstrap.min.js"></script>
+<script src="js/tg.js"></script>
+</body>
+</html>

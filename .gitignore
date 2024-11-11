@@ -1,0 +1,37 @@
+vsc/*
+*.wav
+public/results-json/*.json
+public/videos/*.mp4
+flask_restful_old/
+
+# Ignore PyCharm specific folders and files
+
+# User-specific files
+.idea/
+
+# Python virtual environment folders
+venv/
+env/
+*.env/
+*.venv/
+
+# PyCharm IDE caches and logs
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.idea/caches/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries/
+.idea/assetWizard/
+
+# PyCharm project-specific configurations
+.idea/*.iml
+.idea/modules.xml
+.idea/vcs.xml
+.idea/.name
+
+# Other system files
+.DS_Store        # macOS
+Thumbs.db        # Windows
