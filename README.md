@@ -12,13 +12,11 @@
 
 ## Setup for Miniconda3 Python 3.11
 
-### If new libraries or refactor of code you can update the code
-- `pip freeze > freeze-requirements.txt`
+- install and use Minconda3 3.11
+- `pip install ez_setup`
+- `pip install setuptools`
 
-### Install libraries in new env
-- `pip install -r freeze-requirements.txt`
-
-### Alternative with reduced dependencies ( freeze uses all ), this creates requirements.txt
+### install dependencies, this creates requirements.txt
 - `pip install pipreqs`
 - `pipreqs C:\Users\shane\PycharmProjects\videoAnalysisUI3 --force`
 
