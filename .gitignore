@@ -27,10 +27,12 @@ __pycache__/
 .idea/assetWizard/
 
 # PyCharm project-specific configurations
+.idea/*
 .idea/*.iml
 .idea/modules.xml
 .idea/vcs.xml
 .idea/.name
+.idea/misc.xml
 
 # Other system files
 .DS_Store        # macOS
