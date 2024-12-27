@@ -1,5 +1,5 @@
 VIDEO1 = "JohnMaeda_Simplicity";
-VIDEO2 = "Training_Day";
+VIDEO2 = "Discovery";
 VIDEO3 = "The_Carbon_Connection";
 
 var videoImageSet = [VIDEO1+".png", VIDEO2+".png", VIDEO3+".png"];
