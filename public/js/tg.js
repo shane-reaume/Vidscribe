@@ -1,216 +1,290 @@
+// Initialize VIDEOSET
+var VIDEOSET = {};
+
 // Update the videoImageSet and videoSet arrays based on the global variables
 var videoImageSet = [VIDEO1 + ".png", VIDEO2 + ".png", VIDEO3 + ".png"];
 var videoSet = [VIDEO1 + ".mp4", VIDEO2 + ".mp4", VIDEO3 + ".mp4"];
 var videoArrayLength = videoSet.length;
 
+// Bind click event to video images
 $('#myimage-1,#myimage-2,#myimage-3').bind('click', function () {
-  for (var i = 1; i <= 3; i++) {
-    $('#myimage-'+i).removeClass('box');
-    $('#video-title-'+i).removeClass('box-title');
-  }
-  var activeVideo = $(this).attr('id').split('-');
-  var s = "my-video-" + activeVideo[1];
-  var strSrc = document.getElementById(s).src;
+    for (var i = 1; i <= 3; i++) {
+        $('#myimage-' + i).removeClass('box');
+        $('#video-title-' + i).removeClass('box-title');
+    }
+    var activeVideo = $(this).attr('id').split('-');
+    var s = "my-video-" + activeVideo[1];
+    var videoElement = document.getElementById(s);
+    if (!videoElement) {
+        console.error(`Video element with ID '${s}' not found.`);
+        return;
+    }
+    var strSrc = videoElement.src;
 
-  $( this ).addClass("box");
-  $('#video-title-'+ activeVideo[1] ).addClass('box-title');
+    $(this).addClass("box");
+    $('#video-title-' + activeVideo[1]).addClass('box-title');
 
-  var $myVideo = $("#my-video");
-  $myVideo.attr("src", strSrc);
-  $myVideo.attr("data-vid", activeVideo[1]);
-  $myVideo.get(0).load();
-  $myVideo.get(0).play();
+    var $myVideo = $("#my-video");
+    $myVideo.attr("src", strSrc);
+    $myVideo.attr("data-vid", activeVideo[1]);
+    $myVideo.get(0).load();
+    $myVideo.get(0).play();
 });
 
-$('#my-video').click(function() {
-  if (this.paused === false) {
-      this.pause();
-  } else {
-      this.play();
-  }
+// Toggle play/pause on video click
+$('#my-video').click(function () {
+    if (this.paused === false) {
+        this.pause();
+    } else {
+        this.play();
+    }
 });
 
+// Toggle controls on hover
 $('#my-video-1, #my-video-2, #my-video-3, #my-video').hover(function toggleControls() {
-  if (this.hasAttribute("controls")) {
-      this.removeAttribute("controls")
-  } else {
-      this.setAttribute("controls", "controls")
-  }
-  for (var i = 1; i <= 3; i++) {
-    $('#myimage-'+i).removeClass('box');
-    $('#video-title-'+i).removeClass('box-title');
-  }
-  $('#video-title-'+ this.getAttribute("data-vid")).addClass('box-title');
-  $('#myimage-'+ this.getAttribute("data-vid")).addClass('box');
+    if (this.hasAttribute("controls")) {
+        this.removeAttribute("controls")
+    } else {
+        this.setAttribute("controls", "controls")
+    }
+    for (var i = 1; i <= 3; i++) {
+        $('#myimage-' + i).removeClass('box');
+        $('#video-title-' + i).removeClass('box-title');
+    }
+    $('#video-title-' + this.getAttribute("data-vid")).addClass('box-title');
+    $('#myimage-' + this.getAttribute("data-vid")).addClass('box');
 });
 
+// Bind onload to handle video and image setup
 var bindOnload = function (xhr, i) {
-  xhr.onload = function (e) {
-    if (this.status === 200) {
-      var myBlob = this.response;
-      var vid = (window.URL ? window.URL : window.webktURL).createObjectURL(myBlob);
-      var video = document.getElementById('my-video-' + ++i);
-      video.src = vid;
-      video.setAttribute('poster', "img/"+videoImageSet[--i]);
-      var image = document.getElementById('myimage-' + ++i);
-      image.src = "img/"+videoImageSet[--i];
-      VIDEOSET = {video: "img/"+videoImageSet[--i]}
-    }
-    else {
-      console.log("error: " + e);
-    }
-  };
+    xhr.onload = function (e) {
+        if (this.status === 200) {
+            var myBlob = this.response;
+            var vid = (window.URL ? window.URL : window.webkitURL).createObjectURL(myBlob);
+
+            var videoIndex = i + 1; // Assuming i starts at 0
+
+            // Get the video element
+            var video = document.getElementById('my-video-' + videoIndex);
+            if (video) {
+                video.src = vid;
+                video.setAttribute('poster', "img/" + videoImageSet[i]);
+            } else {
+                console.error(`Video element with ID 'my-video-${videoIndex}' not found.`);
+            }
+
+            // Get the image element
+            var image = document.getElementById('myimage-' + videoIndex);
+            if (image) {
+                image.src = "img/" + videoImageSet[i];
+            } else {
+                console.error(`Image element with ID 'myimage-${videoIndex}' not found.`);
+            }
+
+            // Update VIDEOSET (ensure VIDEOSET is defined elsewhere)
+            if (typeof VIDEOSET !== 'undefined') {
+                VIDEOSET[`video${videoIndex}`] = "img/" + videoImageSet[i];
+            } else {
+                console.warn("VIDEOSET is not defined.");
+            }
+        }
+        else {
+            console.log("error: " + e);
+        }
+    };
 };
 
+// Fetch and bind video sources
 for (var i = 0; i < videoArrayLength; i++) {
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', '/api/Video/starter/' + videoSet[i], true);
-  xhr.responseType = 'blob';
-  bindOnload(xhr, i);
-  xhr.send();
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/Video/starter/' + videoSet[i], true);
+    xhr.responseType = 'blob';
+    bindOnload(xhr, i);
+    xhr.send();
 }
-for (var a = 0, b = 1; a < videoArrayLength; a++, b++) {
-  var s = videoSet[a];
-  s = videoSet[a].substring(0, s.indexOf('.'));
-  $('#video-title-' + b).text(s).fadeIn(5000);
+
+// Update video titles
+for (var a = 0; a < videoArrayLength; a++) {
+    var s = videoSet[a].substring(0, videoSet[a].indexOf('.'));
+    $('#video-title-' + (a + 1)).text(s).fadeIn(5000);
 }
+
 /* functions */
+
+// Function to process video and handle SSE messages
 function postProcessVideo(position, video) {
     const source = new EventSource('/stream');
 
-  source.onmessage = event => {
-    const data_pack = JSON.parse(event.data);
+    source.onmessage = event => {
+        try {
+            const data_pack = JSON.parse(event.data);
 
-    const serverDataSpeech = document.getElementById("serverDataSpeech");
-    const serverDataSpeechPlaceholder = document.getElementById("serverDataSpeechPlaceholder");
+            const serverDataSpeech = document.getElementById("serverDataSpeech");
+            const serverDataSpeechPlaceholder = document.getElementById("serverDataSpeechPlaceholder");
 
-    if (serverDataSpeechPlaceholder.innerHTML !== data_pack['speech1'] && data_pack['speech1'] !== "") {
-      serverDataSpeech.innerHTML = `${data_pack['speech1']}<br>${serverDataSpeech.innerHTML}`;
-    }
+            if (data_pack.type === "transcription") {
+                const transcription = `[${data_pack.clip}] ${data_pack.text}`;
+                if (serverDataSpeechPlaceholder.innerHTML !== transcription && transcription !== "") {
+                    serverDataSpeech.innerHTML = `${transcription}<br>${serverDataSpeech.innerHTML}`;
+                }
+                serverDataSpeechPlaceholder.innerHTML = transcription;
+            } else if (data_pack.type === "info") {
+                const infoMessage = `INFO: ${data_pack.text}`;
+                serverDataSpeech.innerHTML = `${infoMessage}<br>${serverDataSpeech.innerHTML}`;
+            } else if (data_pack.type === "error") {
+                const errorMessage = `ERROR: [${data_pack.clip}] ${data_pack.text}`;
+                serverDataSpeech.innerHTML = `${errorMessage}<br>${serverDataSpeech.innerHTML}`;
+            } else {
+                // Handle any other message types if necessary
+                console.warn("Unknown message type:", data_pack.type);
+            }
+        } catch (e) {
+            console.error("Failed to parse SSE message as JSON:", e);
+            console.error("Received data:", event.data);
+        }
+    };
 
-    serverDataSpeechPlaceholder.innerHTML = data_pack['speech1'];
-  };
+    const url = "/api/Process";
+    const dat = { "videoName": video };
 
-  const url = "/api/Process";
-  const dat = {"videoName": video};
+    $(`.group-${position} span.not-loading`).fadeIn(5000).addClass("loading");
+    $(`.group-${position} button`).remove();
 
-  $(`.group-${position} span.not-loading`).fadeIn(5000).addClass("loading");
-  $(`.group-${position} button`).remove();
+    $.post(url, dat)
+        .done(data => {
+            const $notLoading = $(`.group-${position} span.not-loading`);
+            // Assuming backend sends a JSON object with 'message'
+            const message = data.message || data;
+            $notLoading.append(`<span class="loaded-two btn-notice">${message}</span>`);
 
-  $.post(url, dat)
-    .done(data => {
-      const $notLoading = $(`.group-${position} span.not-loading`);
-      $notLoading.append(`<span class="loaded-two btn-notice">${data}</span>`);
-
-      if ($(".loaded-one")) {
-        $notLoading.removeClass("loading");
-        source.close();
-      }
-    })
-    .fail(data => {
-      const $notLoading = $(`.group-${position} span.not-loading`);
-      $notLoading.removeClass("loading");
-      $notLoading.append(`<button class="loaded-two btn-notice btn-sm">${data}</button>`);
-    });
+            if ($(".loaded-one").length > 0) {
+                $notLoading.removeClass("loading");
+                source.close();
+            }
+        })
+        .fail(data => {
+            const $notLoading = $(`.group-${position} span.not-loading`);
+            $notLoading.removeClass("loading");
+            // Display error message from backend if available
+            const errorMsg = data.responseJSON?.error || "An error occurred.";
+            $notLoading.append(`<button class="loaded-two btn-notice btn-sm">${errorMsg}</button>`);
+        });
 }
 
+// Function to perform search
 function postWordList() {
-  var url = "/api/Words";
-  var dat = {};
-  dat['word1'] = document.getElementById('searchinput').value;
-  for (var videoString = 1; videoString <= this.videoArrayLength; videoString++) {
-    dat['v'+videoString] = document.getElementById('video-title-'+videoString).innerHTML;
-  }
-  for (var feed = 1; feed <= this.videoArrayLength; feed++) {
-    $('#search-feed').empty();
-  }
-  if (dat['word1'] == "") {
-    return
-  }
-  $.post(url, dat, function (data) {
-    })
-    .done(function (data) {
-      vt1 = document.getElementById('video-title-1').innerHTML;
-      vt2 = document.getElementById('video-title-2').innerHTML;
-      vt3 = document.getElementById('video-title-3').innerHTML;
-      $myWord1 = $('#search-feed');
-      var wordPack = $.parseJSON(data);
+    var url = "/api/Words";
+    var dat = {};
+    dat['word1'] = document.getElementById('searchinput').value;
+    for (var videoString = 1; videoString <= videoArrayLength; videoString++) {
+        dat['v' + videoString] = document.getElementById('video-title-' + videoString).innerHTML;
+    }
+    for (var feed = 1; feed <= videoArrayLength; feed++) {
+        $('#search-feed').empty();
+    }
+    if (dat['word1'] == "") {
+        return;
+    }
+    $.ajax({
+        url: url,
+        method: "POST",
+        data: dat,
+        dataType: "json", // Ensure the response is treated as JSON
+        success: function (data) {
+            const vt1 = document.getElementById('video-title-1').innerHTML;
+            const vt2 = document.getElementById('video-title-2').innerHTML;
+            const vt3 = document.getElementById('video-title-3').innerHTML;
+            const $myWord1 = $('#search-feed');
 
-      $.each( wordPack, function( key, value ) {
-        var keySplit = key.split('-');
-        var valueSplit = value.split('-');
-        var glyph = (valueSplit[1] === "tag" ? valueSplit[1] : "user");
-        if (keySplit[0] === vt1)
-          var buttonString1 = '<div onmouseover="hoverSkit(1)" onclick="postSecond(1, ' + keySplit[1] + ')" ' +
-            'class="row btn-skittle btn-'+ valueSplit[1] +'" data-vid="1" data-sec="'+keySplit[1]+'">' +
-            '<span class="col-xs-1 glyphicon glyphicon-'+ glyph +' glyph-'+ glyph +'"></span> ' +
-            '<span class="col-xs-10 link-text-body">'+ valueSplit[0] +'</span>' +
-            '<span class="col-xs-1 btn-span"> '+keySplit[1]+' s</span></div>';
-          $myWord1.prepend(buttonString1);
-        if (keySplit[0] === vt2)
-          var buttonString2 = '<div onmouseover="hoverSkit(2)" onclick="postSecond(2, ' + keySplit[1] + ')" ' +
-            'class="row btn-skittle btn-'+ valueSplit[1] +'" data-vid="2" data-sec="'+keySplit[1]+'">' +
-            '<span class="col-xs-1 glyphicon glyphicon-'+ glyph +' glyph-'+ glyph +'"></span> ' +
-            '<span class="col-xs-10 link-text-body">'+ valueSplit[0] +'</span>' +
-            '<span class="col-xs-1 btn-span"> '+keySplit[1]+' s</span></div>';
-          $myWord1.prepend(buttonString2);
-        if (keySplit[0] === vt3)
-          var buttonString3 = '<div onmouseover="hoverSkit(3)" onclick="postSecond(3, ' + keySplit[1] + ')" ' +
-            'class="row btn-skittle btn-'+ valueSplit[1] +'" data-vid="3" data-sec="'+keySplit[1]+'">' +
-            '<span class="col-xs-1 glyphicon glyphicon-'+ glyph +' glyph-'+ glyph +'"></span> ' +
-            '<span class="col-xs-10 link-text-body">'+ valueSplit[0] +'</span>' +
-            '<span class="col-xs-1 btn-span"> '+keySplit[1]+' s</span></div>';
-          $myWord1.prepend(buttonString3);
-      });
+            // 'data' is already a JavaScript object
+            $.each(data, function (key, value) {
+                var keySplit = key.split('-');
+                var valueSplit = value.split('-');
+                var glyph = (valueSplit[1] === "tag" ? "tag" : "user"); // Ensure correct glyph class
+                var videoTitle = keySplit[0];
+                var videoSec = keySplit[1];
+                var videoNumber = getVideoNumber(videoTitle);
+                var btnClass = `btn-skittle btn-${valueSplit[1]}`;
+                var btnHtml = `
+                    <div onmouseover="hoverSkit(${videoNumber})" 
+                         onclick="postSecond(${videoNumber}, ${videoSec})" 
+                         class="row ${btnClass}" data-vid="${videoNumber}" data-sec="${videoSec}">
+                        <span class="col-xs-1 glyphicon glyphicon-${glyph} glyph-${glyph}"></span>
+                        <span class="col-xs-10 link-text-body">${valueSplit[0]}</span>
+                        <span class="col-xs-1 btn-span">${videoSec} s</span>
+                    </div>`;
 
-      // Sort the tag/dialogs returned
-      var superSort = function(w) {
-        w.find('.btn-skittle').sort(function(a, b) {
-          return +a.getAttribute('data-sec') - +b.getAttribute('data-sec');
-        }).appendTo(w);
-        return w;
-      };
-      superSort($myWord1);
-    })
-    .fail(function () {
-      alert("fail!")
+                if (videoTitle === vt1 || videoTitle === vt2 || videoTitle === vt3) {
+                    $myWord1.prepend(btnHtml);
+                }
+            });
+
+            // Sort the tag/dialogs returned
+            var superSort = function (w) {
+                w.find('.btn-skittle').sort(function (a, b) {
+                    return +a.getAttribute('data-sec') - +b.getAttribute('data-sec');
+                }).appendTo(w);
+                return w;
+            };
+            superSort($myWord1);
+        },
+        error: function () {
+            alert("Search failed!");
+        }
     });
 }
 
-$(document).keyup(function(e){
-  if (e.which === 13 || e.which === 46 || e.which === 8){
-    $("#post-word-list").click();
-  }
-  if (e.keyCode >= 65 && e.keyCode <= 90) {
-    $("#post-word-list").click();
-  }
+// Helper function to get video number based on title
+function getVideoNumber(title) {
+    for (let i = 1; i <= videoArrayLength; i++) {
+        if (document.getElementById('video-title-' + i).innerHTML === title) {
+            return i;
+        }
+    }
+    return 1; // Default to 1 if not found
+}
+
+// Bind keyup events for search input
+$(document).keyup(function (e) {
+    if (e.which === 13 || e.which === 46 || e.which === 8) {
+        $("#post-word-list").click();
+    }
+    if (e.keyCode >= 65 && e.keyCode <= 90) {
+        $("#post-word-list").click();
+    }
 });
 
+// Function to jump to a specific second in a video
 const postSecond = (video, second) => {
-  const obj = {video, second};
-  for (let i = 1; i <= 3; i++) {
-    $(`#myimage-${i}`).removeClass('box');
-    $(`#video-title-${i}`).removeClass('box-title');
-  }
-  $(`#myimage-${obj.video}`).addClass('box');
-  $(`#video-title-${obj.video}`).addClass('box-title');
+    const obj = { video, second };
+    for (let i = 1; i <= 3; i++) {
+        $(`#myimage-${i}`).removeClass('box');
+        $(`#video-title-${i}`).removeClass('box-title');
+    }
+    $(`#myimage-${obj.video}`).addClass('box');
+    $(`#video-title-${obj.video}`).addClass('box-title');
 
-  const s = `my-video-${obj.video}`;
-  const strSrc = document.getElementById(s).src;
-  const $myVideo = $("#my-video");
-  $myVideo.attr("src", strSrc).attr("data-vid", obj.video);
+    const s = `my-video-${obj.video}`;
+    const videoElement = document.getElementById(s);
+    if (!videoElement) {
+        console.error(`Video element with ID '${s}' not found.`);
+        return;
+    }
+    const strSrc = videoElement.src;
+    const $myVideo = $("#my-video");
+    $myVideo.attr("src", strSrc).attr("data-vid", obj.video);
 
-  $myVideo.get(0).load();
-  $myVideo.get(0).currentTime = obj.second;
-  $myVideo.get(0).play();
+    $myVideo.get(0).load();
+    $myVideo.get(0).currentTime = obj.second;
+    $myVideo.get(0).play();
 }
 
-// Bind hover effect
+// Function to handle hover effects
 const hoverSkit = (movie) => {
-  for (let i = 1; i <= 3; i++) {
-    $(`#myimage-${i}`).removeClass('box');
-    $(`#video-title-${i}`).removeClass('box-title');
-  }
-  $(`#video-title-${movie}`).addClass('box-title');
-  $(`#myimage-${movie}`).addClass('box');
+    for (let i = 1; i <= 3; i++) {
+        $(`#myimage-${i}`).removeClass('box');
+        $(`#video-title-${i}`).removeClass('box-title');
+    }
+    $(`#video-title-${movie}`).addClass('box-title');
+    $(`#myimage-${movie}`).addClass('box');
 }
