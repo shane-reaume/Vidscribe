@@ -39,3 +39,4 @@ Thumbs.db        # Windows!/public/img/
 
 .vscode
 .vscode/*
+/public/js/videoConfig.js
