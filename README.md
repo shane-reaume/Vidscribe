@@ -18,7 +18,7 @@
 
 ### install dependencies, this creates requirements.txt
 - `pip install pipreqs`
-- `pipreqs C:\Users\shane\PycharmProjects\videoAnalysisUI3 --force`
+- `pipreqs /Users/shane/PycharmProjects/videoAnalysisUI3 --force`
 
 ### Install libraries in new env
 - `pip install -r requirements.txt`

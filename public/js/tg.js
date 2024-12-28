@@ -1,9 +1,6 @@
-VIDEO1 = "JohnMaeda_Simplicity";
-VIDEO2 = "Discovery";
-VIDEO3 = "The_Carbon_Connection";
-
-var videoImageSet = [VIDEO1+".png", VIDEO2+".png", VIDEO3+".png"];
-var videoSet = [VIDEO1+".mp4", VIDEO2+".mp4", VIDEO3+".mp4"];
+// Update the videoImageSet and videoSet arrays based on the global variables
+var videoImageSet = [VIDEO1 + ".png", VIDEO2 + ".png", VIDEO3 + ".png"];
+var videoSet = [VIDEO1 + ".mp4", VIDEO2 + ".mp4", VIDEO3 + ".mp4"];
 var videoArrayLength = videoSet.length;
 
 $('#myimage-1,#myimage-2,#myimage-3').bind('click', function () {
