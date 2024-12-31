@@ -146,13 +146,13 @@ Facilitates downloading new videos into the application.
 Usage:
 
 ```bash
-  python video_per_second.py --download <video_url_or_identifier>
+  python download_video.py --download <video_url_or_identifier>
 ```
 
 Example:
 
 ```bash
-  python video_per_second.py --download https://example.com/video.mp4
+  python download_video.py --download https://example.com/video.mp4
 ```
 
 Description:

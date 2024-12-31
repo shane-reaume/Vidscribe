@@ -53,11 +53,12 @@ class RequestSpeech(object):
         # Load the full movie
         try:
             full_movie = mp.VideoFileClip(movie_path)
-            logging.info(f"Loaded video '{movie_name}.mp4' successfully.")
+            total_duration = full_movie.duration
+            logging.info(f"Loaded video '{movie_name}.mp4' successfully. Total duration: {total_duration} seconds")
             if stream_instance:
                 message = {
                     "type": "info",
-                    "text": f"Loaded video '{movie_name}.mp4' successfully."
+                    "text": f"Loaded video '{movie_name}.mp4' successfully. Duration: {total_duration} seconds"
                 }
                 stream_instance.send_message(json.dumps(message))
         except Exception as e:
@@ -70,10 +71,20 @@ class RequestSpeech(object):
                 stream_instance.send_message(json.dumps(message))
             return
 
-        clip_length = int(full_movie.duration / clip_duration)
-        clip_length_remainder = full_movie.duration % clip_duration
-        if clip_length_remainder >= 1:
+        # Calculate number of clips needed
+        clip_length = int(total_duration / clip_duration)
+        clip_length_remainder = total_duration % clip_duration
+        if clip_length_remainder > 0:
             clip_length += 1
+            
+        logging.info(f"Video will be split into {clip_length} clips of {clip_duration} seconds each")
+        if stream_instance:
+            message = {
+                "type": "info",
+                "text": f"Video will be split into {clip_length} clips of {clip_duration} seconds each"
+            }
+            stream_instance.send_message(json.dumps(message))
+
         clip_wav_list = []
 
         # Path to check if pre-processing is complete
@@ -88,29 +99,29 @@ class RequestSpeech(object):
                     "text": f"Cutting video into {clip_duration} second clips..."
                 }
                 stream_instance.send_message(json.dumps(message))
+            
             for x in range(clip_length):
                 start_seconds = x * clip_duration
-                end_seconds = start_seconds + clip_duration
-                if end_seconds > full_movie.duration:
-                    end_seconds = full_movie.duration
+                end_seconds = min(start_seconds + clip_duration, total_duration)
+                
                 try:
                     clip = full_movie.subclip(start_seconds, end_seconds)
                     clip_path = os.path.join(asc_dir, f"{movie_name}-{x:03d}.wav")
                     clip.audio.write_audiofile(clip_path, verbose=False)
                     clip_wav_list.append(clip_path)
-                    logging.info(f"Created audio clip: {clip_path}")
+                    logging.info(f"Created audio clip {x+1}/{clip_length}: {clip_path} ({start_seconds}-{end_seconds}s)")
                     if stream_instance:
                         message = {
                             "type": "info",
-                            "text": f"Created audio clip: {clip_path}"
+                            "text": f"Created audio clip {x+1}/{clip_length}: {start_seconds}-{end_seconds}s"
                         }
                         stream_instance.send_message(json.dumps(message))
                 except Exception as e:
-                    logging.warning(f"Failed to create audio clip {clip_path}: {e}")
+                    logging.error(f"Failed to create audio clip {x+1}/{clip_length}: {e}")
                     if stream_instance:
                         message = {
                             "type": "error",
-                            "text": f"Failed to create audio clip {clip_path}: {e}"
+                            "text": f"Failed to create audio clip {x+1}/{clip_length}: {e}"
                         }
                         stream_instance.send_message(json.dumps(message))
                     continue
