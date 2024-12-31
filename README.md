@@ -6,6 +6,14 @@
 
 A Flask-based application for video processing, speech-to-text transcription, and content search. Upload videos, process them into searchable transcripts, and easily find specific content within your video collection.
 
+## Demo
+
+Watch the application in action:
+
+[![Video Analysis UI Demo](https://img.youtube.com/vi/Aupg10YgHL8/0.jpg)](https://www.youtube.com/watch?v=Aupg10YgHL8)
+
+*Click the image above to watch the demo on YouTube*
+
 ## Features
 
 - **Video Management:** Download and manage up to 3 videos in your workspace
