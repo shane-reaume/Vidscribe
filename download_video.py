@@ -4,6 +4,8 @@ import os
 import sys
 import tempfile
 import subprocess
+import glob
+import shutil
 
 import yt_dlp
 from PIL import Image
@@ -50,6 +52,10 @@ def replace_video(config, replace_id, new_name, duration=0):
     for video in config['videos']:
         if video['id'] == replace_id:
             old_name = video['name']
+            # Only delete old files if the new name is different
+            if old_name != new_name:
+                print(f"Deleting old files for {old_name} before replacing with {new_name}")
+                delete_video_files(replace_id, old_name)
             video['name'] = new_name
             video['duration'] = duration
             print(f"Replaced {replace_id}: {old_name} with {new_name} (duration: {duration}s)")
@@ -102,8 +108,9 @@ def manage_videos(config):
             new_name = input(f"Enter new name for {replace_id}: ").strip()
             replaced_id, old_name, new_name = replace_video(config, replace_id, new_name)
             if replaced_id:
-                # Clean up old video and thumbnail
-                delete_video_files(replaced_id, old_name)
+                # Only clean up old video and thumbnail if names are different
+                if old_name != new_name:
+                    delete_video_files(replaced_id, old_name)
                 # Download and possibly concatenate videos
                 if len(urls) > 1:
                     info_dict = download_multiple_videos(urls, new_name, replaced_id, old_name)
@@ -140,8 +147,14 @@ def delete_video_files(video_id, video_name):
 
 
 def download_video(url, name, replace_id=None, old_name=None):
+    # Check if we're replacing with the same name
+    same_name_replacement = old_name == name if old_name else False
+    
+    # If we're replacing with the same name, create a temporary name for download
+    temp_name = f"{name}_temp" if same_name_replacement else name
+    
     ydl_opts = {
-        'outtmpl': f'public/videos/{name}.%(ext)s',  # Save video in public/videos with custom name
+        'outtmpl': f'public/videos/{temp_name}.%(ext)s',  # Save video in public/videos with custom name
         'format': 'bestvideo+bestaudio/best',  # Download best quality
         'merge_output_format': 'mp4',  # Ensure output is mp4
         'writethumbnail': True,  # Enable thumbnail download
@@ -166,6 +179,41 @@ def download_video(url, name, replace_id=None, old_name=None):
             # Get video duration
             duration = info_dict.get('duration', 0)
             print(f"Video duration: {duration}s")
+            
+            # Convert webp thumbnail to png
+            webp_path = f'public/videos/{temp_name}.webp'
+            png_path = f'public/img/{name}.png'
+            
+            # Create img directory if it doesn't exist
+            os.makedirs('public/img', exist_ok=True)
+            
+            if os.path.exists(webp_path):
+                try:
+                    # Open and convert the webp image
+                    with Image.open(webp_path) as img:
+                        # Convert to RGB mode if necessary
+                        if img.mode in ('RGBA', 'LA'):
+                            background = Image.new('RGB', img.size, (255, 255, 255))
+                            background.paste(img, mask=img.split()[-1])
+                            img = background
+                        # Resize to 810x449
+                        img = img.resize((810, 449), Image.Resampling.LANCZOS)
+                        # Save as PNG
+                        img.save(png_path, 'PNG')
+                    # Remove the webp file after conversion
+                    os.remove(webp_path)
+                    print(f"Converted thumbnail to PNG and resized to 810x449")
+                except Exception as e:
+                    print(f"Error converting thumbnail: {e}")
+            
+            # If this is a same-name replacement, handle the file swap
+            if same_name_replacement:
+                old_video_path = f'public/videos/{name}.mp4'
+                temp_video_path = f'public/videos/{temp_name}.mp4'
+                if os.path.exists(old_video_path):
+                    os.remove(old_video_path)
+                os.rename(temp_video_path, old_video_path)
+                print(f"Successfully replaced {name} with new version")
             
             return {'filepath': f'public/videos/{name}.mp4', 'duration': duration}
         except yt_dlp.utils.DownloadError as e:
@@ -291,56 +339,102 @@ def download_multiple_videos(urls, name, replace_id=None, old_name=None):
             return None
 
 
+def wipe_data():
+    """
+    Wipes all temporary and output files, resetting the workspace to a clean state.
+    This includes:
+    - asc/ directory and its contents
+    - public/videos/*.mp4 files
+    - public/img/*.png files
+    - public/results-json/*.json files
+    """
+    paths_to_clean = [
+        ('asc', '*'),  # All ASC directories and files
+        ('public/videos', '*.mp4'),  # All videos
+        ('public/img', '*.png'),  # All thumbnails
+        ('public/results-json', '*.json')  # All transcription results
+    ]
+    
+    for base_dir, pattern in paths_to_clean:
+        try:
+            # Ensure the base directory exists
+            os.makedirs(base_dir, exist_ok=True)
+            
+            # Get all matching files
+            full_pattern = os.path.join(base_dir, pattern)
+            matching_files = glob.glob(full_pattern)
+            
+            # Remove each file
+            for file_path in matching_files:
+                try:
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                        print(f"Removed file: {file_path}")
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                        print(f"Removed directory: {file_path}")
+                except Exception as e:
+                    print(f"Error removing {file_path}: {e}")
+                    
+        except Exception as e:
+            print(f"Error processing {base_dir}: {e}")
+    
+    print("Data wipe complete. Workspace reset to clean state.")
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Manage and download YouTube videos.')
-    parser.add_argument('--manage', action='store_true', help='Manage video entries')
-    parser.add_argument('--download', nargs='+', metavar='URL NAME [REPLACE_ID]',
-                        help='Download video(s). For multiple videos, separate URLs with commas. They will be concatenated.')
+    parser = argparse.ArgumentParser(description='Download and manage videos.')
+    parser.add_argument('--download', type=str, help='Download video from URL')
+    parser.add_argument('--manage', action='store_true', help='Open video management menu')
+    parser.add_argument('--wipeData', action='store_true', help='Wipe all temporary and output files')
+    parser.add_argument('args', nargs='*', help='Additional arguments')
+    
     args = parser.parse_args()
-
+    
+    if args.wipeData:
+        wipe_data()
+        return
+        
     config = load_config()
-
+    
     if args.manage:
         manage_videos(config)
     elif args.download:
-        if len(args.download) < 2:
-            print("Error: --download requires at least 2 arguments: URL and NAME.")
+        if len(args.args) < 2:
+            print("Error: --download requires NAME and REPLACE_ID arguments.")
+            parser.print_help()
             sys.exit(1)
         
-        # Split URLs if there are multiple
-        urls = [url.strip() for url in args.download[0].split(',')]
-        name = args.download[1]
-        replace_id = args.download[2].upper() if len(args.download) >= 3 else None
-
+        name = args.args[0]
+        replace_id = args.args[1].upper() if len(args.args) >= 2 else None
+        urls = [url.strip() for url in args.download.split(',')]
+        
         if replace_id:
-            # Replace specified video slot
+            # Get the old name before replacement
+            old_name = None
+            for video in config['videos']:
+                if video['id'] == replace_id:
+                    old_name = video['name']
+                    break
+            
+            # Download the video regardless of name
             if len(urls) > 1:
-                info_dict = download_multiple_videos(urls, name, replace_id, None)
+                info_dict = download_multiple_videos(urls, name, replace_id, old_name)
             else:
-                info_dict = download_video(urls[0], name, replace_id, None)
-                
+                info_dict = download_video(urls[0], name, replace_id, old_name)
+            
             if info_dict:
-                replaced_id, old_name, new_name = replace_video(config, replace_id, name, info_dict.get('duration', 0))
-                if replaced_id:
-                    # Clean up old video and thumbnail
-                    delete_video_files(replaced_id, old_name)
-            else:
-                sys.exit(1)
+                replace_video(config, replace_id, name, info_dict.get('duration', 0))
         else:
-            if len(config['videos']) >= 3:
-                print("Configuration is full. Please specify a video slot to replace using the --download option.")
-                print("Usage: --download URL NAME REPLACE_ID (e.g., --download 'url' 'name' 'VIDEO1')")
-                sys.exit(1)
+            if len(urls) > 1:
+                info_dict = download_multiple_videos(urls, name)
             else:
-                if len(urls) > 1:
-                    info_dict = download_multiple_videos(urls, name)
-                else:
-                    info_dict = download_video(urls[0], name)
-                    
-                if info_dict:
-                    config = add_video(config, name, info_dict.get('duration', 0))
-                else:
-                    sys.exit(1)
+                info_dict = download_video(urls[0], name)
+            
+            if info_dict:
+                add_video(config, name, info_dict.get('duration', 0))
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

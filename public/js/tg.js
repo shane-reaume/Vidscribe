@@ -153,13 +153,13 @@ function postProcessVideo(position, video) {
     $.post(url, dat)
         .done(data => {
             const $notLoading = $(`.group-${position} span.not-loading`);
-            // Assuming backend sends a JSON object with 'message'
-            const message = data.message || data;
-            $notLoading.append(`<span class="loaded-two btn-notice">${message}</span>`);
-
-            if ($(".loaded-one").length > 0) {
+            // Check if the status is completed
+            if (data.status === "completed") {
                 $notLoading.removeClass("loading");
+                $notLoading.html(`<span class="btn-notice btn-success">${data.message}</span>`);
                 source.close();
+            } else {
+                $notLoading.append(`<span class="loaded-two btn-notice">${data.message}</span>`);
             }
         })
         .fail(data => {
@@ -167,7 +167,8 @@ function postProcessVideo(position, video) {
             $notLoading.removeClass("loading");
             // Display error message from backend if available
             const errorMsg = data.responseJSON?.error || "An error occurred.";
-            $notLoading.append(`<button class="loaded-two btn-notice btn-sm">${errorMsg}</button>`);
+            $notLoading.html(`<span class="btn-notice btn-danger">${errorMsg}</span>`);
+            source.close();
         });
 }
 

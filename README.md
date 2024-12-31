@@ -4,245 +4,137 @@
 ![Python](https://img.shields.io/badge/python-3.11-blue.svg)
 ![Flask](https://img.shields.io/badge/flask-2.2-blue.svg)
 
-## Table of Contents
-
-- [Description](#description)
-- [Features](#features)
-- [Folder Structure](#folder-structure)
-- [Installation](#installation)
-  - [Prerequisites](#prerequisites)
-  - [Setup](#setup)
-- [Usage](#usage)
-  - [Running the API](#running-the-api)
-  - [Accessing the UI](#accessing-the-ui)
-- [CLI Scripts](#cli-scripts)
-  - [`--download`](#download)
-  - [`--manage`](#manage)
-- [API Endpoints](#api-endpoints)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Description
-
-**videoAnalysisUI3** is a robust Flask-based application designed for video processing and analysis. It provides a user-friendly UI for managing videos, processing them into audio clips, transcribing speech, and searching through transcriptions. The API facilitates seamless integration and extensibility, allowing for the addition of new features and services.
+A Flask-based application for video processing, speech-to-text transcription, and content search. Upload videos, process them into searchable transcripts, and easily find specific content within your video collection.
 
 ## Features
 
-- **Video Processing:** Automatically splits videos into audio clips of configurable duration.
-- **Speech Recognition:** Transcribes audio clips using Google Speech Recognition.
-- **Real-Time Updates:** Utilizes Server-Sent Events (SSE) to provide real-time transcription progress.
-- **Search Functionality:** Allows searching through transcribed text to find specific keywords and their corresponding timestamps.
-- **CLI Tools:** Offers command-line interfaces for downloading new videos and managing application features.
-- **Extensible API:** Built on Flask and Flask-RESTful, making it easy to add or modify API endpoints.
-
-## Folder Structure
-
-videoAnalysisUI3/
-├── asc/
-│   └── <movie_name>/
-│       ├── <movie_name>-000.wav
-│       ├── <movie_name>-mini-000.wav
-│       └── ...
-│── crux_processor/
-│       └── __init__.py
-│       ├── video_per_second.py
-│       └── ...
-├── public/
-│   ├── results-json/
-│   │   └── <movie_name>-dialog.json
-│   ├── videos/
-│   │   └── <movie_name>.mp4
-│   └── js/
-│       ├── tg.js
-│       └── videoConfig.js
-│       ├── ...
-├── api.py
-├── videoConfig.json
-├── requirements.txt
-├── README.md
-└── ...
-
-
-- **`asc/`**: Contains audio clips extracted from videos.
-- **`public/`**: Hosts static UI files and results in JSON format.
-- **`video_api/`**: Contains Flask RESTful API services.
-- **`video_per_second.py`**: Handles video processing and transcription.
-- **`videoConfig.js` & `tg.js`**: Frontend configuration and JavaScript functionalities.
-- **`requirements.txt`**: Lists all Python dependencies.
+- **Video Management:** Download and manage up to 3 videos in your workspace
+- **Speech Recognition:** Automatically transcribes speech using Google Speech Recognition
+- **Real-Time Updates:** Watch transcription progress in real-time
+- **Content Search:** Search through transcriptions to find specific moments in videos
+- **Background Noise Reduction:** Enhanced audio processing for better voice clarity
+- **CLI Tools:** Convenient command-line tools for video management
 
 ## Installation
 
 ### Prerequisites
 
-- **Miniconda3** (Recommended for managing Python environments)
-- **Python 3.11**
+- Python 3.11
+- FFmpeg (for video processing)
+- Git
 
 ### Setup
 
 1. **Clone the Repository**
-
    ```bash
    git clone https://github.com/shane-reaume/videoAnalysisUI3.git
    cd videoAnalysisUI3
    ```
-2. Install Miniconda3
 
-    Download and install Miniconda3 from here.
+2. **Create and Activate Virtual Environment**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
-3. Create a New Conda Environment
-  
-    ```bash
-    Copy code
-    conda create -n video_api_env python=3.11
-    conda activate video_api_env
-    ```
-
-4. Install Dependencies
-
-   - Make sure pip is up-to-date and setuptools are the latest
-
-     ```bash
-     python -m pip install --upgrade pip
-     pip install --upgrade setuptools
-     ```
-   - Generate requirements.txt
-
-     ```bash
-     pip install pipreqs
-     pipreqs /path/to/videoAnalysisUI3 --force
-     ```
-   - Install Required Libraries
-
-     ```bash
-     pip install -r requirements.txt
-     ```
+3. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 ## Usage
 
-### Running the API
-Start the Flask API by executing:
+### Starting the Application
 
-  ```bash
-      python api.py
-  ```
+1. **Start the Server**
+   ```bash
+   python api.py
+   ```
 
-Upon running, the UI will automatically open in your default browser.
+2. **Access the UI**
+   - Open http://localhost:4000/public/ in your web browser
+   - You'll see three video slots: VIDEO1, VIDEO2, and VIDEO3
 
-### Accessing the UI
+### Adding Videos
 
-- Navigate to http://localhost:4000/public/ in your web browser to access the user interface.
-- The UI allows you to:
-  - Upload and manage videos.
-  - Process videos into audio clips.
-  - View real-time transcription progress.
-  - Search through transcriptions.
+1. **Using the CLI**
+   ```bash
+   # Download a video into a specific slot
+   python download_video.py --download 'VIDEO_URL' 'VIDEO_NAME' 'SLOT_ID'
+   
+   # Example:
+   python download_video.py --download 'https://www.youtube.com/watch?v=example' 'my_video' 'VIDEO1'
+   ```
 
-## CLI Scripts
-The application includes command-line interface (CLI) scripts to enhance functionality and ease of use.
+2. **Multiple Videos at Once**
+   ```bash
+   # Concatenate multiple videos
+   python download_video.py --download 'URL1,URL2' 'combined_video' 'VIDEO1'
+   ```
 
-`--download`
-Facilitates downloading new videos into the application.
+### Processing Videos
 
-Usage:
+1. In the web UI (http://localhost:4000/public/), locate your video slot
+2. Click the "Process Video" button
+3. Watch the real-time transcription progress
+4. Once complete, the transcription will be saved as JSON
 
-```bash
-  python download_video.py --download <video_url_or_identifier>
-```
+### Searching Content
 
-Example:
+1. Visit http://localhost:4000/public/search
+2. Enter your search terms (comma-separated for multiple terms)
+3. Results will show timestamps where the terms appear in your videos
 
-```bash
-  python download_video.py --download https://example.com/video.mp4
-```
-
-Description:
-
-- Downloads the specified video and saves it to the public/videos/ directory.
-- Automatically processes the downloaded video for transcription.
-
-`--manage`
-Provides management features for the application, such as listing processed videos, deleting videos, or updating configurations.
-
-Usage:
+### CLI Commands
 
 ```bash
-  python video_per_second.py --manage <action> [options]
+# Download a video
+python download_video.py --download 'VIDEO_URL' 'VIDEO_NAME' 'SLOT_ID'
+
+# Clean workspace (removes all processed files)
+python download_video.py --wipeData
+
+# Manage videos interactively
+python download_video.py --manage
 ```
 
-Examples:
+## File Structure
 
-- List All Processed Videos
-
-```bash
-  python video_per_second.py --manage list_videos
+```
+videoAnalysisUI3/
+├── asc/                      # Processed audio clips
+├── public/
+│   ├── videos/              # Downloaded videos
+│   ├── img/                 # Video thumbnails
+│   ├── results-json/        # Transcription results
+│   └── js/                  # Frontend scripts
+├── crux_processor/          # Core processing logic
+├── api.py                   # Flask API server
+├── download_video.py        # CLI tool
+└── requirements.txt         # Python dependencies
 ```
 
-- Delete a Specific Video
+## Troubleshooting
 
-```bash
-  python video_per_second.py --manage delete_video <movie_name>
-```
+- **No Audio Detected**: Try adjusting the video's volume or using a video with clearer audio
+- **Transcription Errors**: Ensure good internet connection for Google Speech API
+- **Video Processing Failed**: Make sure FFmpeg is installed and accessible
+- **UI Not Loading**: Verify the server is running on port 4000
 
-- Update Configuration Settings
+## Data Management
 
-```bash
-  python video_per_second.py --manage update_config --clip_duration 15
-```
-
-Description:
-
-- list_videos: Displays a list of all videos currently processed and available in the system.
-- delete_video: Removes a specified video and its associated data from the system.
-- update_config: Allows updating configuration settings like clip_duration.
-
-Note: Ensure you provide the necessary arguments based on the action you intend to perform.
-
-## API Endpoints
-_To be updated once all endpoints are finalized. For now, refer to the api.py file for available endpoints._
-
-### Example Endpoints
-
-- Process Video
-
-```http
-POST /api/process
-```
-
-Description: Processes a specified video for transcription.
-
-- Search Transcriptions
-
-```http
-POST /api/search
-```
-
-Description: Searches through transcribed text for specified keywords.
-
-_Please update this section with detailed information about each API endpoint, including request and response formats, parameters, and examples._
+- Use `python download_video.py --wipeData` to clean all processed files
+- Each video slot (VIDEO1, VIDEO2, VIDEO3) can hold one video
+- Replacing a video in a slot automatically cleans up old files
 
 ## Contributing
-Contributions are welcome! Please follow these steps:
 
-1. Fork the Repository
-2. Create a New Branch
+Contributions are welcome! Please:
 
-    ```bash
-    git checkout -b feature/YourFeatureName
-    ```
+1. Fork the repository
+2. Create a feature branch
+3. Submit a Pull Request
 
-3. Commit Your Changes
+## License
 
-    ```bash
-    git commit -m "Add some feature"
-    ```
-
-4. Push to the Branch
-
-    ```bash
-    git push origin feature/YourFeatureName
-    ```
-
-5. Open a Pull Request
-
-License
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the MIT License.
