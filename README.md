@@ -10,7 +10,7 @@ A Flask-based application for video processing, speech-to-text transcription, an
 
 Watch the application in action:
 
-[![Video Analysis UI Demo](https://img.youtube.com/vi/Aupg10YgHL8/0.jpg)](https://www.youtube.com/watch?v=Aupg10YgHL8)
+[![Vidscribe UI Demo](https://img.youtube.com/vi/Aupg10YgHL8/0.jpg)](https://www.youtube.com/watch?v=Aupg10YgHL8)
 
 *Click the image above to watch the demo on YouTube*
 
