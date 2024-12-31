@@ -2,16 +2,39 @@ import moviepy.editor as mp
 import json
 import os
 from pydub import AudioSegment
+from pydub.effects import normalize
 import speech_recognition as sr
 import io
 import queue
 import threading
 import logging
+import numpy as np
+from scipy.signal import butter, filtfilt
+import subprocess
 
 # Configure logging for better debugging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 recognizer = sr.Recognizer()
+
+# Configure audio preprocessing parameters
+SAMPLE_RATE = 16000  # Hz
+LOW_CUTOFF = 50  # Hz (lowered from 80 to catch more voice content)
+HIGH_CUTOFF = 4000  # Hz (increased from 3300 to preserve more voice harmonics)
+NOISE_REDUCE_TIME = 0.25  # seconds (reduced from 0.5 to be less aggressive)
+ENERGY_THRESHOLD = 150  # lowered from 300 to detect softer speech
+
+def butter_bandpass(lowcut, highcut, fs, order=5):
+    nyquist = 0.5 * fs
+    low = lowcut / nyquist
+    high = highcut / nyquist
+    b, a = butter(order, [low, high], btype='band')
+    return b, a
+
+def apply_bandpass_filter(data, fs, lowcut, highcut, order=5):
+    b, a = butter_bandpass(lowcut, highcut, fs, order=order)
+    y = filtfilt(b, a, data)
+    return y
 
 class Stream(object):
     def __init__(self):
@@ -30,6 +53,31 @@ class Stream(object):
 class RequestSpeech(object):
     clip_duration = 10  # Duration in seconds for each clip
 
+    def repair_mp4(self, video_path):
+        """
+        Attempts to repair a corrupted MP4 file by re-encoding it.
+        Returns the path to the repaired file.
+        """
+        try:
+            repaired_path = video_path.replace('.mp4', '_repaired.mp4')
+            logging.info(f"Attempting to repair video file: {video_path}")
+            
+            # Use ffmpeg to re-encode the video
+            subprocess.run([
+                'ffmpeg', '-i', video_path,
+                '-c:v', 'copy', '-c:a', 'copy',
+                '-movflags', '+faststart',
+                repaired_path
+            ], check=True, capture_output=True)
+            
+            # If successful, replace the original file
+            os.replace(repaired_path, video_path)
+            logging.info(f"Successfully repaired video file: {video_path}")
+            return True
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to repair video file: {e.stderr.decode()}")
+            return False
+
     def processSpeech(self, movie_name, stream_instance=None):
         if not movie_name:
             logging.error("No Movie name provided, exiting.")
@@ -42,38 +90,65 @@ class RequestSpeech(object):
             return
 
         clip_duration = self.clip_duration
-
         movie_path = os.path.join("public", "videos", f"{movie_name}.mp4")
         asc_dir = os.path.join("asc", movie_name)
         dialog_json = os.path.join("public", "results-json", f"{movie_name}-dialog.json")
-
-        # Create directory if it doesn't exist
+        
+        # Create necessary directories
         os.makedirs(asc_dir, exist_ok=True)
-
-        # Load the full movie
+        os.makedirs(os.path.dirname(dialog_json), exist_ok=True)
+        
+        # Try to load the video, repair if needed
         try:
             full_movie = mp.VideoFileClip(movie_path)
-            logging.info(f"Loaded video '{movie_name}.mp4' successfully.")
-            if stream_instance:
-                message = {
-                    "type": "info",
-                    "text": f"Loaded video '{movie_name}.mp4' successfully."
-                }
-                stream_instance.send_message(json.dumps(message))
         except Exception as e:
             logging.error(f"Error loading video '{movie_name}.mp4': {e}")
-            if stream_instance:
-                message = {
-                    "type": "error",
-                    "text": f"Error loading video '{movie_name}.mp4': {e}"
-                }
-                stream_instance.send_message(json.dumps(message))
-            return
+            # Attempt to repair the video
+            if self.repair_mp4(movie_path):
+                try:
+                    full_movie = mp.VideoFileClip(movie_path)
+                    logging.info(f"Successfully loaded repaired video: {movie_path}")
+                except Exception as e:
+                    logging.error(f"Failed to load video even after repair: {e}")
+                    if stream_instance:
+                        message = {
+                            "type": "error",
+                            "text": f"Failed to load video even after repair attempt: {e}"
+                        }
+                        stream_instance.send_message(json.dumps(message))
+                    return
+            else:
+                if stream_instance:
+                    message = {
+                        "type": "error",
+                        "text": f"Failed to repair corrupted video file: {movie_path}"
+                    }
+                    stream_instance.send_message(json.dumps(message))
+                return
 
-        clip_length = int(full_movie.duration / clip_duration)
-        clip_length_remainder = full_movie.duration % clip_duration
-        if clip_length_remainder >= 1:
+        total_duration = full_movie.duration
+        logging.info(f"Loaded video '{movie_name}.mp4' successfully. Total duration: {total_duration} seconds")
+        if stream_instance:
+            message = {
+                "type": "info",
+                "text": f"Loaded video '{movie_name}.mp4' successfully. Duration: {total_duration} seconds"
+            }
+            stream_instance.send_message(json.dumps(message))
+
+        # Calculate number of clips needed
+        clip_length = int(total_duration / clip_duration)
+        clip_length_remainder = total_duration % clip_duration
+        if clip_length_remainder > 0:
             clip_length += 1
+            
+        logging.info(f"Video will be split into {clip_length} clips of {clip_duration} seconds each")
+        if stream_instance:
+            message = {
+                "type": "info",
+                "text": f"Video will be split into {clip_length} clips of {clip_duration} seconds each"
+            }
+            stream_instance.send_message(json.dumps(message))
+
         clip_wav_list = []
 
         # Path to check if pre-processing is complete
@@ -88,29 +163,29 @@ class RequestSpeech(object):
                     "text": f"Cutting video into {clip_duration} second clips..."
                 }
                 stream_instance.send_message(json.dumps(message))
+            
             for x in range(clip_length):
                 start_seconds = x * clip_duration
-                end_seconds = start_seconds + clip_duration
-                if end_seconds > full_movie.duration:
-                    end_seconds = full_movie.duration
+                end_seconds = min(start_seconds + clip_duration, total_duration)
+                
                 try:
                     clip = full_movie.subclip(start_seconds, end_seconds)
                     clip_path = os.path.join(asc_dir, f"{movie_name}-{x:03d}.wav")
                     clip.audio.write_audiofile(clip_path, verbose=False)
                     clip_wav_list.append(clip_path)
-                    logging.info(f"Created audio clip: {clip_path}")
+                    logging.info(f"Created audio clip {x+1}/{clip_length}: {clip_path} ({start_seconds}-{end_seconds}s)")
                     if stream_instance:
                         message = {
                             "type": "info",
-                            "text": f"Created audio clip: {clip_path}"
+                            "text": f"Created audio clip {x+1}/{clip_length}: {start_seconds}-{end_seconds}s"
                         }
                         stream_instance.send_message(json.dumps(message))
                 except Exception as e:
-                    logging.warning(f"Failed to create audio clip {clip_path}: {e}")
+                    logging.error(f"Failed to create audio clip {x+1}/{clip_length}: {e}")
                     if stream_instance:
                         message = {
                             "type": "error",
-                            "text": f"Failed to create audio clip {clip_path}: {e}"
+                            "text": f"Failed to create audio clip {x+1}/{clip_length}: {e}"
                         }
                         stream_instance.send_message(json.dumps(message))
                     continue
@@ -167,8 +242,18 @@ class RequestSpeech(object):
         for ct, wa in enumerate(clip_wav_list):
             try:
                 with sr.AudioFile(wa) as source:
+                    # Adjust for ambient noise with gentler settings
+                    recognizer.adjust_for_ambient_noise(source, duration=NOISE_REDUCE_TIME)
+                    # Use lower energy threshold for better voice detection
+                    recognizer.energy_threshold = ENERGY_THRESHOLD
                     audio = recognizer.record(source)
-                recog = recognizer.recognize_google(audio)
+                    
+                # Use more lenient recognition settings
+                recog = recognizer.recognize_google(
+                    audio,
+                    language="en-US",
+                    show_all=False
+                )
                 wav_dict[f"{movie_name}-{ct:03d}"] = recog
                 logging.info(f"Transcribed [{movie_name}-{ct:03d}]: {recog}")
                 if stream_instance:
@@ -185,9 +270,9 @@ class RequestSpeech(object):
                 if stream_instance:
                     location_seconds = f"{ct * clip_duration}-{(ct + 1) * clip_duration}"
                     message = {
-                        "type": "error",
+                        "type": "warning",  # Changed from error to warning
                         "clip": f"{movie_name}-{ct:03d}",
-                        "text": f"NO AUDIO"
+                        "text": f"No speech detected in this segment"  # More user-friendly message
                     }
                     stream_instance.send_message(json.dumps(message))
             except sr.RequestError as e:
@@ -235,13 +320,17 @@ class RequestSpeech(object):
 
     def pydub_to_audio(self, asc_dir, movie_name, clip_length, stream_instance):
         """
-        Converts stereo WAV files to mono and returns a list of 'mini' WAV files.
+        Converts stereo WAV files to mono and applies audio preprocessing for better voice clarity.
+        Steps:
+        1. Convert to mono
+        2. Normalize audio
+        3. Apply gentler bandpass filter to focus on voice frequencies
         """
-        logging.info("Converting clips to mono audio...")
+        logging.info("Converting clips to mono audio and applying voice enhancement...")
         if stream_instance:
             message = {
                 "type": "info",
-                "text": "Converting clips to mono audio..."
+                "text": "Converting clips to mono audio and applying voice enhancement..."
             }
             stream_instance.send_message(json.dumps(message))
 
@@ -250,15 +339,45 @@ class RequestSpeech(object):
             try:
                 input_wav = os.path.join(asc_dir, f"{movie_name}-{x:03d}.wav")
                 output_wav = os.path.join(asc_dir, f"{movie_name}-mini-{x:03d}.wav")
-                sound = AudioSegment.from_wav(input_wav).set_channels(1)
-                sound.export(output_wav, format="wav")
+                
+                if not os.path.exists(input_wav):
+                    logging.warning(f"Input file not found: {input_wav}")
+                    continue
+                    
+                # Load audio and convert to mono
+                sound = AudioSegment.from_wav(input_wav)
+                sound = sound.set_channels(1)
+                
+                # Normalize audio (less aggressively)
+                sound = normalize(sound, headroom=0.1)  # Added headroom to prevent clipping
+                
+                # Convert to numpy array for scipy processing
+                samples = np.array(sound.get_array_of_samples())
+                
+                # Apply gentler bandpass filter
+                filtered_samples = apply_bandpass_filter(
+                    samples,
+                    sound.frame_rate,
+                    LOW_CUTOFF,
+                    HIGH_CUTOFF,
+                    order=3  # Reduced from 5 to make filter gentler
+                )
+                
+                # Convert back to AudioSegment
+                filtered_sound = sound._spawn(filtered_samples.astype(np.int16))
+                
+                # Export processed audio
+                filtered_sound.export(output_wav, format="wav")
                 mini_clip_wav_list.append(output_wav)
+                
+                # Remove original file
                 os.remove(input_wav)
-                logging.info(f"Processed mono audio: {output_wav}")
+                
+                logging.info(f"Processed and enhanced audio: {output_wav}")
                 if stream_instance:
                     message = {
                         "type": "info",
-                        "text": f"Processed mono audio: {output_wav}"
+                        "text": f"Processed and enhanced audio: {output_wav}"
                     }
                     stream_instance.send_message(json.dumps(message))
             except Exception as e:

@@ -65,7 +65,11 @@ class Process(Resource):
         # Start processing in a separate thread
         vps_multi.processSpeech(video_name)
 
-        return {"message": f"{video_name} speech processing started."}, 201
+        return {
+            "status": "completed",
+            "message": f"{video_name} speech processing completed.",
+            "video_name": video_name
+        }, 201
 
 
 class SearchList(Resource):
