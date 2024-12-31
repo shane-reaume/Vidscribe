@@ -4,16 +4,22 @@ import json
 import webbrowser
 from flask_restful import reqparse, Api, Resource
 from crux_processor import video_per_second as vps
+import os
+
 flask.helpers._endpoint_from_view_func = flask.scaffold._endpoint_from_view_func
 
-vps_request_speech = vps.RequestSpeech()
-vps_request_search = vps.RequestUiSearch()
-vps_multi = vps.MultithreadRun()
+# Instantiate Stream
 vps_request_stream = vps.Stream()
+
+# Instantiate MultithreadRun with the Stream instance
+vps_multi = vps.MultithreadRun(stream_instance=vps_request_stream)
+
+# Instantiate RequestUiSearch
+vps_request_search = vps.RequestUiSearch()
 
 port = 4000
 static_folder = 'public'
-url = "http://localhost:{0}".format(port) + "/" + static_folder
+url = f"http://localhost:{port}/{static_folder}"
 app = flask.Flask(__name__, static_folder=static_folder)
 api = Api(app)
 
@@ -24,7 +30,7 @@ def stream():
                           mimetype="text/event-stream")
 
 
-# let's open up COR's so demos  are easy
+# Allow CORS for all domains (for demo purposes)
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
@@ -33,7 +39,7 @@ def after_request(response):
     return response
 
 
-# we filter what args we accept with type and how submitted
+# Define request arguments
 parser = reqparse.RequestParser()
 parser.add_argument('seconds1', type=int, location='form')
 parser.add_argument('seconds2', type=int, location='form')
@@ -48,26 +54,40 @@ parser.add_argument('word1', type=str, location='form')
 class Process(Resource):
 
     def post(self):
-        # verify and parse args
+        # Parse arguments
         args123 = parser.parse_args()
-        video_name = args123['videoName']
-        print("is it: " + video_name)
+        video_name = args123.get('videoName')
+        print(f"Processing video: {video_name}")
 
+        if not video_name:
+            return {"error": "No video name provided."}, 400
+
+        # Start processing in a separate thread
         vps_multi.processSpeech(video_name)
-        vps_request_speech.processSpeech(video_name)
 
-        return video_name + " speech processed", 201
+        return {
+            "status": "completed",
+            "message": f"{video_name} speech processing completed.",
+            "video_name": video_name
+        }, 201
 
 
 class SearchList(Resource):
 
     def post(self):
-        args = parser.parse_args(req=None, strict=False)
-        ui_search_input = args['word1']
-        video_set = {'video1': args['v1'], 'video2': args['v2'], 'video3': args['v3']}
+        args = parser.parse_args()
+        ui_search_input = args.get('word1')
+        video_set = {
+            'video1': args.get('v1'),
+            'video2': args.get('v2'),
+            'video3': args.get('v3')
+        }
+
+        if not ui_search_input or not all(video_set.values()):
+            return {"error": "Invalid search input or video set."}, 400
+
         video_clean_words = vps_request_search.uiSearch(ui_search_input, video_set)
-        json_data = json.dumps(video_clean_words)
-        return json_data, 201
+        return video_clean_words, 201
 
 
 class Root(Resource):
@@ -85,11 +105,15 @@ class SearchUI(Resource):
 class VideosStarter(Resource):
 
     def get(self, video):
-        print(video)
-        return app.send_static_file('videos/' + video)
+        print(f"Serving video: {video}")
+        video_path = os.path.join(app.static_folder, 'videos', video)
+        if os.path.isfile(video_path):
+            return app.send_static_file(os.path.join('videos', video))
+        else:
+            return {"error": "Video not found."}, 404
 
 
-# Actually set up the Api resource routing here
+# Set up the API resource routing
 api.add_resource(Process, '/api/Process')
 api.add_resource(SearchList, '/api/Words')
 
@@ -99,5 +123,6 @@ api.add_resource(Root, '/public/')
 api.add_resource(SearchUI, '/public/search')
 
 if __name__ == '__main__':
+    # Open the URL in the default web browser
     webbrowser.open_new(url)
     app.run(port=port, debug=False, threaded=True)

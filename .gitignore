@@ -4,11 +4,6 @@ public/results-json/*.json
 public/videos/*.mp4
 flask_restful_old/
 
-# Ignore PyCharm specific folders and files
-
-# User-specific files
-.idea/
-
 # Python virtual environment folders
 venv/
 env/
@@ -20,20 +15,30 @@ env/
 *.pyo
 *.pyd
 __pycache__/
-.idea/caches/
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/dictionaries/
-.idea/assetWizard/
 
 # PyCharm project-specific configurations
+.idea
 .idea/*
 .idea/*.iml
 .idea/modules.xml
 .idea/vcs.xml
 .idea/.name
 .idea/misc.xml
+.idea/caches/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries/
+.idea/assetWizard/
+.idea/
 
 # Other system files
 .DS_Store        # macOS
-Thumbs.db        # Windows
+Thumbs.db        # Windows!/public/img/
+
+/public/img/*.png
+
+.vscode
+.vscode/*
+/public/js/videoConfig.js
+videoConfig.json
+asc/
