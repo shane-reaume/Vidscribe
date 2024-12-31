@@ -1,4 +1,4 @@
-# videoAnalysisUI3
+# Vidscribe
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11-blue.svg)
@@ -27,7 +27,7 @@ Watch the application in action:
 
 ### Prerequisites
 
-- Python 3.11
+- Python 3.11^
 - FFmpeg (for video processing)
 - Git
 
@@ -35,8 +35,8 @@ Watch the application in action:
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/shane-reaume/videoAnalysisUI3.git
-   cd videoAnalysisUI3
+   git clone https://github.com/shane-reaume/Vidscribe.git
+   cd Vidscribe
    ```
 
 2. **Create and Activate Virtual Environment**
@@ -109,7 +109,7 @@ python download_video.py --manage
 ## File Structure
 
 ```
-videoAnalysisUI3/
+Vidscribe/
 ├── asc/                      # Processed audio clips
 ├── public/
 │   ├── videos/              # Downloaded videos
